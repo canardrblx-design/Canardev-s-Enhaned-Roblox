@@ -104,15 +104,16 @@
         el.style.display = prefs[title] === "hide" ? "none" : "";
       }
 
-      // the "Add Friends" tile in the friends row
-      for (const tile of document.querySelectorAll(".friends-carousel-tile")) {
+      // the "Add Friends" tile in the friends row (scope to the feed so we don't
+      // scan the whole document every debounce tick during lazy-load)
+      for (const tile of (getFeedRoot() || document).querySelectorAll(".friends-carousel-tile")) {
         if (/add friends/i.test(tile.textContent)) {
           tile.style.display = settings.features.hideAddFriends ? "none" : "";
         }
       }
 
       // drop the "See All" buttons — the section title itself is the link now
-      for (const header of document.querySelectorAll(".container-header")) {
+      for (const header of (getFeedRoot() || document).querySelectorAll(".container-header")) {
         const seeAll = [...header.querySelectorAll("a, button")].find((a) => /see all/i.test(a.textContent));
         if (seeAll) seeAll.style.display = "none";
         if (/^friends/i.test(header.textContent.trim()) && !header.dataset.cerTitleLink) {

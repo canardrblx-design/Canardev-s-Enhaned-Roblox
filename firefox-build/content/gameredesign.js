@@ -335,10 +335,14 @@
   // Report Abuse beneath it (reorder via flex order on their shared column).
   function tidyAbout() {
     findSectionByHeading(/people also join|recommended/i)?.classList.add("cer-gp-hidden");
-    for (const el of document.querySelectorAll("[class*='social-link'], .game-social-links-container")) {
+    // :not([...]) markers keep the 300ms-debounced re-scan from re-testing every
+    // link/social block on the whole page each time the About tab mutates
+    for (const el of document.querySelectorAll("[class*='social-link']:not([data-cer-social]), .game-social-links-container:not([data-cer-social])")) {
+      el.dataset.cerSocial = "1";
       el.classList.add("cer-gp-social");
     }
-    for (const el of document.querySelectorAll("a")) {
+    for (const el of document.querySelectorAll("a:not([data-cer-report])")) {
+      el.dataset.cerReport = "1";
       if (/report abuse/i.test(el.textContent.trim())) el.closest("div,li,span")?.classList.add("cer-gp-report");
     }
   }

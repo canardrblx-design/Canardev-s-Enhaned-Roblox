@@ -38,7 +38,7 @@
 
   // swap the friend hover-card's dated sprite icons for crisp modern SVGs
   function modernizeHoverIcons() {
-    for (const btn of document.querySelectorAll(".friend-tile-dropdown-button")) {
+    for (const btn of document.querySelectorAll(".friend-tile-dropdown-button:not([data-cer-icon])")) {
       if (btn.dataset.cerIcon) continue;
       btn.dataset.cerIcon = "1";
       const old = btn.querySelector("[class*='icon-'], img, svg");

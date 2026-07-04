@@ -217,6 +217,7 @@
     const STEP = 100;
     const TOTAL = 15000;
     carouselTimer = setInterval(() => {
+      if (!root.isConnected) return stopCarousel(); // stop after leaving /charts
       elapsed += STEP;
       cover.style.width = ((1 - elapsed / TOTAL) * 100).toFixed(1) + "%";
       if (elapsed >= TOTAL) {
@@ -316,7 +317,10 @@
       picksSub.textContent = "Changes in " + p(h) + ":" + p(m) + ":" + p(s);
     }
     tick();
-    setInterval(tick, 1000);
+    const picksTimer = setInterval(() => {
+      if (!root.isConnected) return clearInterval(picksTimer); // stop after leaving /charts
+      tick();
+    }, 1000);
   })();
 
   // --- friend sidebar: what your friends are playing ---

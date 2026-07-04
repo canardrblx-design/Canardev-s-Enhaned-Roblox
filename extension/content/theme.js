@@ -313,7 +313,13 @@
     style.textContent = rules.join("\n");
   }
 
-  CER.ext.storage.onChanged.addListener(apply);
+  // debounce: any storage change fires this, but apply() rebuilds ~50 CSS rules,
+  // so batch rapid changes (e.g. several feature toggles) into one re-theme
+  let applyT = null;
+  CER.ext.storage.onChanged.addListener(() => {
+    clearTimeout(applyT);
+    applyT = setTimeout(apply, 120);
+  });
   // runs at document_start now (kills the default-theme flash); body-class
   // toggles need the body, so re-apply once the DOM exists
   document.addEventListener("DOMContentLoaded", () => apply());

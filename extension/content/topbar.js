@@ -240,7 +240,14 @@
 
   // React re-renders the sidebar on navigation and drops our flex `order`,
   // which made the Friends item jump. Re-apply order on every sidebar mutation.
-  const orderObserver = new MutationObserver(() => applyOrder());
+  // coalesce to one applyOrder per frame — React fires many attribute/childList
+  // mutations per re-render and re-sorting on each was pure waste
+  let orderScheduled = false;
+  const orderObserver = new MutationObserver(() => {
+    if (orderScheduled) return;
+    orderScheduled = true;
+    requestAnimationFrame(() => { orderScheduled = false; applyOrder(); });
+  });
   const l0 = sidebarList();
   if (l0) orderObserver.observe(l0, { childList: true, attributes: true, subtree: true });
 

@@ -285,10 +285,15 @@
     document.body.appendChild(vtag);
   }
 
-  // Roblox re-renders can re-show its own nav/header — keep them down.
+  // Roblox re-renders can re-show its own nav/header — keep them down. The
+  // re-attach checks stay immediate (cheap, no flash); only reserveSpace() (a
+  // #wrap query + class write) is debounced so lazy-load mutations don't thrash.
+  let reserveT = null;
   new MutationObserver(() => {
+    if (!CER.alive?.()) return;
     if (!document.getElementById("cer-cnav-kill")) document.documentElement.appendChild(kill);
     if (!document.contains(nav)) document.body.appendChild(nav);
-    reserveSpace();
+    clearTimeout(reserveT);
+    reserveT = setTimeout(reserveSpace, 120);
   }).observe(document.body, { childList: true, subtree: true });
 })();
