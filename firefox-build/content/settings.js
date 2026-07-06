@@ -636,10 +636,23 @@
   async function renderJoin(body) {
     const settings = await CER.get();
 
-    // One clear option. Region selection isn't possible (Roblox blocks the
-    // per-server IP lookup), so instead of two half-broken toggles there's a
-    // single "avoid friends" switch that does the one thing that actually works.
     body.appendChild(CER.el("h3", "cer-h3", "Join options"));
+
+    // preferred region: when set, pressing Play searches for a server there
+    const regionRow = CER.el("div", "cer-feature-row");
+    const rWrap = CER.el("div");
+    rWrap.appendChild(CER.el("div", "cer-feature-name", "Preferred region"));
+    rWrap.appendChild(CER.el("div", "cer-feature-hint", "When you press Play, join a server in this region."));
+    regionRow.appendChild(rWrap);
+    const regionOpts = [["auto", "Off"]].concat(Object.keys(CER.REGIONS).map((k) => [k, CER.REGIONS[k]]));
+    regionRow.appendChild(
+      CER.dropdown(regionOpts, settings.joinPrefs.region ?? "auto", async (v) => {
+        const cur = await CER.get();
+        await CER.set({ joinPrefs: { ...cur.joinPrefs, region: v } });
+      })
+    );
+    body.appendChild(regionRow);
+
     const row = CER.el("label", "cer-feature-row");
     const textWrap = CER.el("div");
     textWrap.appendChild(CER.el("div", "cer-feature-name", "Avoid servers my friends are in"));
@@ -716,7 +729,7 @@
       CER.el(
         "p",
         "cer-feature-hint",
-        "The Servers tab lets you sort, filter, and join by ID. You can't pick a region because Roblox does not allow it."
+        "The Servers tab lets you sort, filter, and join by ID. Set a preferred region above to join servers there."
       )
     );
   }

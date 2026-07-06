@@ -177,6 +177,93 @@ async function sendFeedback(text) {
   return { ok: res.ok, status: res.status };
 }
 
+// ---- preferred-region server search ----
+// Find a live server in the user's chosen region by probing Roblox's own join
+// endpoint one server at a time (the join response carries the server's
+// coordinates). This all runs in the single background worker, so no matter how
+// many tabs are open there is only ever ONE search in flight and one shared,
+// persistent cooldown — a second tab can't multiply the requests.
+const CER_REGIONS = {
+  "us-east": { name: "US East", lat: 39.04, lon: -77.49 },
+  "us-central": { name: "US Central", lat: 32.78, lon: -96.8 },
+  "us-west": { name: "US West", lat: 37.77, lon: -122.42 },
+  brazil: { name: "Brazil", lat: -23.55, lon: -46.63 },
+  uk: { name: "UK", lat: 51.51, lon: -0.13 },
+  europe: { name: "Europe", lat: 50.11, lon: 8.68 },
+  india: { name: "India", lat: 19.08, lon: 72.88 },
+  singapore: { name: "Singapore", lat: 1.35, lon: 103.82 },
+  japan: { name: "Japan", lat: 35.68, lon: 139.69 },
+  australia: { name: "Australia", lat: -33.87, lon: 151.21 },
+};
+function cerNearestRegion(lat, lon) {
+  let best = null, bestD = Infinity;
+  for (const key of Object.keys(CER_REGIONS)) {
+    const r = CER_REGIONS[key];
+    const dLat = ((lat - r.lat) * Math.PI) / 180, dLon = ((lon - r.lon) * Math.PI) / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat * Math.PI) / 180) * Math.cos((r.lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+    const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    if (d < bestD) { bestD = d; best = key; }
+  }
+  return best;
+}
+const cerRegionCache = new Map(); // jobId -> region key (or null if unknown)
+async function cerProbeRegion(placeId, jobId) {
+  // the same call the client makes to join — the response's SessionId holds the
+  // server's Latitude/Longitude
+  const res = await robloxFetch({
+    url: "https://gamejoin.roblox.com/v2/join-game-instance",
+    method: "POST",
+    body: { placeId: Number(placeId), gameId: jobId, gameJoinAttemptId: crypto.randomUUID() },
+  });
+  const sess = res.data?.joinScript?.SessionId;
+  if (typeof sess !== "string" || sess.startsWith("http")) return null;
+  let coords;
+  try { coords = JSON.parse(sess); } catch { return null; }
+  if (typeof coords.Latitude !== "number" || typeof coords.Longitude !== "number") return null;
+  return cerNearestRegion(coords.Latitude, coords.Longitude);
+}
+async function cerFindRegionServer(placeId, regionKey) {
+  const listRes = await robloxFetch({
+    url: `https://games.roblox.com/v1/games/${placeId}/servers/Public?limit=100&excludeFullGames=true`,
+    method: "GET",
+  });
+  const servers = (listRes.data?.data ?? []).filter((s) => s && s.id && s.playing < s.maxPlayers);
+  let probes = 0;
+  for (const s of servers) {
+    const cached = cerRegionCache.get(s.id);
+    if (cached !== undefined) { // already known — free, doesn't count toward the cap
+      if (cached === regionKey) return s.id;
+      continue;
+    }
+    if (probes >= 15) break; // hard cap: at most 15 live probes per search
+    probes++;
+    let region = null;
+    try { region = await cerProbeRegion(placeId, s.id); } catch { /* skip */ }
+    cerRegionCache.set(s.id, region);
+    if (region === regionKey) return s.id;
+    await new Promise((r) => setTimeout(r, 500)); // throttle between probes
+  }
+  return null;
+}
+let cerRegionBusy = false;
+const CER_REGION_COOLDOWN_MS = 15 * 60 * 1000;
+async function cerRegionJoin(placeId, regionKey) {
+  if (!CER_REGIONS[regionKey]) return { error: "badregion" };
+  const { regionCooldownUntil = 0 } = await ext.storage.local.get("regionCooldownUntil");
+  if (Date.now() < regionCooldownUntil) return { error: "cooldown", until: regionCooldownUntil };
+  if (cerRegionBusy) return { error: "busy" }; // one search at a time across all tabs
+  cerRegionBusy = true;
+  try {
+    const jobId = await cerFindRegionServer(placeId, regionKey);
+    if (jobId) return { ok: true, jobId };
+    const until = Date.now() + CER_REGION_COOLDOWN_MS; // 15 tries failed -> 15 min cooldown
+    await ext.storage.local.set({ regionCooldownUntil: until });
+    return { error: "notfound", until };
+  } finally {
+    cerRegionBusy = false;
+  }
+}
+
 ext.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.cer === "playtime-tick") {
     tickPlaytime().then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
@@ -184,6 +271,10 @@ ext.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg?.cer === "check-update") {
     checkForUpdate().then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
+    return true;
+  }
+  if (msg?.cer === "region-join") {
+    cerRegionJoin(String(msg.placeId), msg.region).then(sendResponse, () => sendResponse({ error: "failed" }));
     return true;
   }
   if (msg?.cer === "feedback") {

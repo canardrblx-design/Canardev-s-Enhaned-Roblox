@@ -299,6 +299,21 @@ CER.set = async function (patch) {
   }
 };
 
+// Regions offered for the "preferred region" join option. Keys match the ones
+// the background worker uses to tag a server from its coordinates.
+CER.REGIONS = {
+  "us-east": "US East",
+  "us-central": "US Central",
+  "us-west": "US West",
+  brazil: "Brazil",
+  uk: "UK",
+  europe: "Europe",
+  india: "India",
+  singapore: "Singapore",
+  japan: "Japan",
+  australia: "Australia",
+};
+
 // Tiny element builder: CER.el("div", "cer-grid") or CER.el("span", "cls", "text")
 CER.el = function (tag, className, text) {
   const el = document.createElement(tag);

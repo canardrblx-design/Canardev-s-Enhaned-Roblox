@@ -77,9 +77,31 @@
   const actions = CER.el("div", "cer-profile-actions");
   const play = CER.el("button", "btn-common-play-game-lg btn-primary-md cer-gp-play");
   play.appendChild(CER.el("span", "icon-common-play"));
-  play.addEventListener("click", () => {
+  const normalJoin = () => {
     window.postMessage({ cer: "join-multiplayer", placeId }, location.origin);
     setTimeout(() => (location.href = "roblox://experiences/start?placeId=" + placeId), 400);
+  };
+  play.addEventListener("click", async () => {
+    const settings = await CER.get();
+    const region = settings.joinPrefs?.region;
+    if (!region || region === "auto" || !CER.REGIONS?.[region]) return normalJoin();
+    // preferred region set: ask the worker to find a server there (it caps + throttles + cools down)
+    play.disabled = true;
+    CER.toast?.("Finding a server in " + CER.REGIONS[region] + "…");
+    const res = await new Promise((r) => {
+      try { CER.ext.runtime.sendMessage({ cer: "region-join", placeId, region }, r); } catch { r({ error: "failed" }); }
+    });
+    play.disabled = false;
+    if (res?.ok && res.jobId) {
+      window.postMessage({ cer: "join-instance", placeId, jobId: res.jobId }, location.origin);
+      setTimeout(() => (location.href = "roblox://experiences/start?placeId=" + placeId + "&gameInstanceId=" + res.jobId), 400);
+    } else if (res?.error === "cooldown" || res?.error === "notfound") {
+      CER.toast?.("No server found in " + CER.REGIONS[region] + ". Wait a few minutes, or join an optimal server.", "error");
+    } else if (res?.error === "busy") {
+      CER.toast?.("Still searching for a server. Give it a moment.", "error");
+    } else {
+      normalJoin();
+    }
   });
   const gear = CER.el("button", "btn-common-play-game-lg btn-primary-md cer-join-btn");
   gear.title = "Join options";
