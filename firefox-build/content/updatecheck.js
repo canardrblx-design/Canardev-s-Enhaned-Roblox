@@ -32,7 +32,10 @@
     backdrop.appendChild(pop);
 
     const update = CER.el("button", "cer-update-btn cer-update-go", "Update");
-    update.addEventListener("click", showHowTo);
+    update.addEventListener("click", () => {
+      window.open("https://github.com/" + REPO + "/releases/latest", "_blank");
+      backdrop.remove();
+    });
 
     const cancel = CER.el("button", "cer-update-btn cer-update-cancel");
     cancel.disabled = true;
@@ -59,26 +62,5 @@
         cancel.classList.add("cer-update-cancel-ready");
       }
     }, 1000);
-
-    // Browsers don't let an unpacked/temporary add-on update its own files, so
-    // "Update" can't run git for you. Copy the command so it's a paste, not typing.
-    function showHowTo() {
-      clearInterval(iv);
-      const isWin = /windows/i.test(navigator.userAgent);
-      const cmd = isWin
-        ? "cd $HOME\\CER; git fetch origin; git reset --hard origin/main"
-        : "cd ~/CER && git fetch origin && git reset --hard origin/main";
-      try { navigator.clipboard?.writeText(cmd); } catch {}
-      title.textContent = "One paste to finish";
-      sub.textContent = "The update command is on your clipboard. Paste it in a terminal, press Enter, then reload the add-on.";
-      const code = CER.el("div", "cer-update-cmd", cmd);
-      sub.after(code);
-      actions.textContent = "";
-      const ok = CER.el("button", "cer-update-btn cer-update-go", "Got it");
-      ok.addEventListener("click", () => backdrop.remove());
-      const dl = CER.el("button", "cer-update-btn cer-update-cancel cer-update-cancel-ready", "Or download");
-      dl.addEventListener("click", () => window.open("https://github.com/" + REPO + "/releases/latest", "_blank"));
-      actions.append(ok, dl);
-    }
   }
 })();
