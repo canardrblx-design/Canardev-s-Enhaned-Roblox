@@ -18,6 +18,40 @@
   }
   const isSelf = String(me?.id) === userId;
 
+  // The modern profile's "N Friends" control is a React <a> with no href, and
+  // its router can land on the WRONG friends list (yours instead of theirs).
+  // Force it at THIS profile's friends page, which natively shows the right
+  // person's friends. (Your own goes to /users/friends so our redesign runs.)
+  (function fixFriendsLink() {
+    const target = isSelf
+      ? "https://www.roblox.com/users/friends"
+      : "https://www.roblox.com/users/" + userId + "/friends";
+    const patch = () => {
+      for (const a of document.querySelectorAll("a:not([data-cer-friends])")) {
+        if (!/^\d[\d,]*\s*friends?$/i.test(a.textContent.trim())) continue;
+        a.dataset.cerFriends = "1";
+        a.href = target;
+        a.addEventListener(
+          "click",
+          (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            location.href = target;
+          },
+          true // capture phase, so we beat React's own click handler
+        );
+      }
+    };
+    patch();
+    let t = null;
+    const obs = new MutationObserver(() => {
+      if (!CER.alive?.()) return obs.disconnect();
+      clearTimeout(t);
+      t = setTimeout(patch, 300);
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+  })();
+
   // anchor under the names block (the profile header)
   const anchor = await CER.waitFor(
     () => [...document.querySelectorAll("h1, [class*='profile-name'], [class*='profile-display']")].find((h) => h.offsetParent),

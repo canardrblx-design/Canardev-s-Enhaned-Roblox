@@ -10,8 +10,8 @@
 
   ext.storage.local.get(["cerUpdate", "cerUpdateDismissedAt"], (store) => {
     const u = store && store.cerUpdate;
-    // no data or stale (>12h) — ask the worker to re-check for next time
-    if (!u || !u.checkedAt || Date.now() - u.checkedAt > 12 * 3600e3) {
+    // no data or stale (>3h) — ask the worker to re-check for next time
+    if (!u || !u.checkedAt || Date.now() - u.checkedAt > 3 * 3600e3) {
       try { ext.runtime.sendMessage({ cer: "check-update" }); } catch {}
     }
     if (!u || !u.available) return;
