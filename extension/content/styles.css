@@ -4091,3 +4091,19 @@ body.cer-group-cfg .cer-set-card {
   pointer-events: none;
 }
 .cer-update-cancel-label { position: relative; }
+
+/* --- settings warning banner --- */
+.cer-settings-warn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(242, 186, 42, 0.12);
+  border: 1px solid rgba(242, 186, 42, 0.4);
+  color: var(--color-content-emphasis, #fff);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.cer-settings-warn-icon { font-size: 15px; flex: 0 0 auto; }

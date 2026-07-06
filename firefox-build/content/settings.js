@@ -420,8 +420,16 @@
 
   // ---- tab: Features ----
 
+  function warnBanner() {
+    const w = CER.el("div", "cer-settings-warn");
+    w.appendChild(CER.el("span", "cer-settings-warn-icon", "⚠"));
+    w.appendChild(CER.el("span", "", "Changing these can break things. It is best to leave everything default."));
+    return w;
+  }
+
   async function renderFeatures(body) {
     const settings = await CER.get();
+    body.appendChild(warnBanner());
     const rows = [
       ["Profile header", "profileHeader", "Your avatar card replaces the Home title."],
       ["Expand button", "profileExpandBtn", "The Expand/Collapse control under the profile card."],
@@ -569,6 +577,7 @@
   async function renderRobloxUI(body) {
     const settings = await CER.get();
 
+    body.appendChild(warnBanner());
     body.appendChild(CER.el("h3", "cer-h3", "Hide home sections"));
 
     if (settings.knownSections.length === 0) {
