@@ -1,6 +1,10 @@
-// Shared helpers. Loaded before every other content script, so anything on
-// `CER` is available to all of them (they run in the same isolated world —
-// think of it like a ModuleScript everything requires).
+// Shared helpers. Every content_scripts entry lists this file first, then reads
+// `CER`. Chrome shares one global across all of an extension's content scripts,
+// but Firefox does NOT share it across separate content_scripts entries — so we
+// can't define CER in one entry and expect the others to see it. Instead each
+// entry loads this file and this guard builds CER once per world (and skips the
+// rebuild on a second load in browsers that DO share the global).
+if (!globalThis.CER) {
 
 // Force the new left-nav to render EXPANDED. Roblox stores the collapse state
 // in localStorage['new-left-nav'] keyed by user id; if it's false the sidebar
@@ -660,4 +664,6 @@ CER.buildGameCard = function (game, opts) {
 
   return card;
 };
+
+} // end: if (!globalThis.CER)
 
