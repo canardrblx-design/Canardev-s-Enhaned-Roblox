@@ -101,6 +101,13 @@ const CER = {
   },
 };
 
+// Expose CER on the shared global. Chrome lets a top-level `const` in one content
+// script be seen by the others, but Firefox does NOT share that binding across
+// separate content_scripts entries — so the document_start scripts (shared/theme)
+// saw CER while every document_idle UI script hit `typeof CER === "undefined"` and
+// bailed, leaving native Roblox. A property on globalThis is visible to them all.
+globalThis.CER = CER;
+
 // Theme presets, Discord-Nitro style.
 // `native` presets just flip Roblox's own light/dark setting.
 // `dark` presets ALSO flip Roblox to native dark first, so Roblox themes its
